@@ -34,8 +34,11 @@ def create_app():
     app.register_blueprint(report_bp)
 
     # Create all DB tables on first run
-    with app.app_context():
-        db.create_all()
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception as e:
+        print("DB init error:", e)
 
     return app
 
