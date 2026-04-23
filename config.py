@@ -4,7 +4,15 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASE_DIR, 'database.db')
+    
+    # PostgreSQL on Railway (auto-set by Railway)
+    # Falls back to SQLite locally
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        SQLALCHEMY_DATABASE_URI = database_url.replace('postgresql://', 'postgresql+psycopg2://')
+    else:
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASE_DIR, 'database.db')
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # All models stored locally
