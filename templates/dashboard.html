@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – HateShield{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i>Analyse Text</h4>
+    <small class="text-muted">Enter English or Hinglish content to detect hate speech</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('main.history') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-clock-history me-1"></i>History
+    </a>
+    <a href="{{ url_for('report.download_report') }}" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-file-earmark-pdf me-1"></i>Full Report
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- ═══════════════════════════════════════════════════════ LEFT: INPUT -->
+  <div class="col-lg-5">
+
+    <!-- Input card -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-pencil-square me-2"></i>Input Panel
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('main.dashboard') }}" id="analyseForm">
+
+          <div class="mb-3">
+            <label for="input_text" class="form-label fw-semibold small text-muted text-uppercase ls-1">
+              Text to Analyse
+            </label>
+            <textarea class="form-control" id="input_text" name="input_text"
+                      rows="6" maxlength="2000"
+                      placeholder="e.g.  tu bilkul pagal hai, stop this nonsense"
+                      required>{{ request.form.get('input_text', '') }}</textarea>
+            <div class="d-flex justify-content-between mt-1">
+              <small class="text-muted">English / Hinglish supported</small>
+              <small class="text-muted"><span id="charCount">0</span> / 2000</small>
+            </div>
+          </div>
+
+          <!-- Quick example buttons -->
+          <div class="mb-3">
+            <div class="small text-muted mb-2 fw-semibold">Try an example:</div>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-success btn-sm example-btn"
+                data-text="yaar tu sach mein bohot achha hai, keep it up!">
+                <i class="bi bi-check2 me-1"></i>Safe text
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm example-btn"
+                data-text="tu bilkul pagal aur bewakoof hai, get lost!">
+                <i class="bi bi-x me-1"></i>Offensive text
+              </button>
+              <button type="button" class="btn btn-outline-info btn-sm example-btn"
+                data-text="aaj ka khana bohot achha tha, dost ke saath maja aaya">
+                <i class="bi bi-chat me-1"></i>Hinglish neutral
+              </button>
+            </div>
+          </div>
+
+          <!-- Normalization toggle -->
+          <div class="p-3 bg-light rounded-3 mb-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold small">Transliteration Normalization</div>
+                <div class="text-muted" style="font-size:0.78rem;">
+                  Maps Hinglish tokens → English before classification
+                </div>
+              </div>
+              <div class="form-check form-switch mb-0 ms-3">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="use_normalization" name="use_normalization"
+                       style="transform:scale(1.3);"
+                       {% if request.form.get('use_normalization') %}checked{% endif %} />
+              </div>
+            </div>
+            <div id="normHint" class="mt-2 small text-info d-none">
+              <i class="bi bi-info-circle me-1"></i>
+              Hinglish words like <em>pagal, bewakoof, kutta</em> will be translated before prediction.
+            </div>
+          </div>
+
+          <!-- Model selector -->
+          <div class="p-3 bg-light rounded-3 mb-4">
+            <div class="fw-semibold small mb-2"><i class="bi bi-cpu me-1"></i>Model</div>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="model_type" id="model_lr"
+                       value="lr" {% if request.form.get('model_type', 'lr') == 'lr' %}checked{% endif %}>
+                <label class="form-check-label small" for="model_lr">
+                  <span class="badge bg-primary me-1">LR</span>Logistic Regression
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="model_type" id="model_lstm"
+                       value="lstm" {% if request.form.get('model_type') == 'lstm' %}checked{% endif %}>
+                <label class="form-check-label small" for="model_lstm">
+                  <span class="badge bg-warning text-dark me-1">DL</span>BiLSTM
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="model_type" id="model_muril"
+                       value="muril" {% if request.form.get('model_type') == 'muril' %}checked{% endif %}>
+                <label class="form-check-label small" for="model_muril">
+                  <span class="badge bg-success me-1">🤗</span>MuRIL
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2" id="submitBtn">
+            <i class="bi bi-search me-2"></i>Analyse Now
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Mini info card always visible -->
+    <div class="card border-0 shadow-sm bg-dark text-white">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-lightbulb-fill text-warning fs-4"></i>
+          <div class="small">
+            <strong>Tip:</strong> Enable normalization for texts that contain
+            Hinglish words (Roman Hindi) to improve detection accuracy.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left -->
+
+
+  <!-- ═══════════════════════════════════════════════════════ RIGHT: RESULT -->
+  <div class="col-lg-7">
+
+    {% if result %}
+
+      <!-- ── 1. RESULT SUMMARY ─────────────────────────────────────────── -->
+      <div class="card border-0 shadow-sm mb-3
+        {% if result.prediction == 'HOF' %}border-start border-danger border-4
+        {% else %}border-start border-success border-4{% endif %}">
+        <div class="card-header fw-semibold
+          {% if result.prediction == 'HOF' %}bg-danger text-white
+          {% else %}bg-success text-white{% endif %}">
+          <i class="bi {% if result.prediction == 'HOF' %}bi-exclamation-triangle-fill
+                       {% else %}bi-check-circle-fill{% endif %} me-2"></i>
+          Result Summary
+        </div>
+        <div class="card-body">
+          <div class="row align-items-center g-3">
+            <div class="col-sm-4 text-center">
+              <div class="display-5 fw-bold
+                {% if result.prediction == 'HOF' %}text-danger{% else %}text-success{% endif %}">
+                {{ result.prediction }}
+              </div>
+              <div class="small text-muted mt-1">
+                {% if result.prediction == 'HOF' %}Hate / Offensive{% else %}Safe Content{% endif %}
+              </div>
+            </div>
+            <div class="col-sm-8">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="small fw-semibold">Confidence</span>
+                <span class="small fw-bold
+                  {% if result.prediction == 'HOF' %}text-danger{% else %}text-success{% endif %}">
+                  {{ "%.1f"|format(result.confidence * 100) }}%
+                </span>
+              </div>
+              <div class="progress mb-2" style="height:20px; border-radius:10px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated
+                  {% if result.prediction == 'HOF' %}bg-danger{% else %}bg-success{% endif %}"
+                  style="width:{{ (result.confidence * 100)|round|int }}%; border-radius:10px;">
+                </div>
+              </div>
+              <div class="small text-muted">
+                {% set c = (result.confidence * 100)|round|int %}
+                {% if c >= 80 %}
+                  <i class="bi bi-circle-fill text-success me-1" style="font-size:.5rem;"></i>
+                  High confidence — model is strongly certain.
+                {% elif c >= 60 %}
+                  <i class="bi bi-circle-fill text-warning me-1" style="font-size:.5rem;"></i>
+                  Moderate confidence — review recommended.
+                {% else %}
+                  <i class="bi bi-circle-fill text-danger me-1" style="font-size:.5rem;"></i>
+                  Low confidence — treat with caution.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 2. PROCESSING DETAILS ─────────────────────────────────────── -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-secondary text-white fw-semibold">
+          <i class="bi bi-cpu me-2"></i>Processing Details
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="small fw-semibold text-muted text-uppercase mb-1">Preprocessed Text</div>
+            <div class="bg-light rounded p-2 small font-monospace" id="cleanedText">
+              {{ result.cleaned_text }}
+            </div>
+          </div>
+          {% if result.normalized_text %}
+          <div class="mb-3">
+            <div class="small fw-semibold text-info text-uppercase mb-1">
+              <i class="bi bi-arrow-right-circle me-1"></i>After Normalization
+            </div>
+            <div class="bg-info bg-opacity-10 border border-info rounded p-2 small font-monospace">
+              {{ result.normalized_text }}
+            </div>
+          </div>
+          {% endif %}
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 p-2 bg-light rounded small">
+                <i class="bi bi-toggles text-muted"></i>
+                <span class="text-muted">Normalization:</span>
+                {% if result.normalized_text %}
+                  <span class="badge bg-info text-white">ON</span>
+                {% else %}
+                  <span class="badge bg-secondary">OFF</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 p-2 bg-light rounded small">
+                <i class="bi bi-cpu text-muted"></i>
+                <span class="text-muted">Model:</span>
+                {% if result.model_used == 'BiLSTM' %}
+                  <span class="badge bg-warning text-dark">BiLSTM</span>
+                {% elif result.model_used == 'MuRIL' %}
+                  <span class="badge bg-success">MuRIL</span>
+                {% else %}
+                  <span class="badge bg-primary">LR</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 p-2 bg-light rounded small">
+                <i class="bi bi-hash text-muted"></i>
+                <span class="text-muted">Word count:</span>
+                <span class="fw-semibold">{{ result.cleaned_text.split()|length }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 3. INSIGHT BOX ─────────────────────────────────────────────── -->
+      <div class="card border-0 shadow-sm mb-3
+        {% if result.prediction == 'HOF' %}bg-danger bg-opacity-10
+        {% else %}bg-success bg-opacity-10{% endif %}">
+        <div class="card-body py-3 px-3">
+          <div class="d-flex gap-2">
+            <i class="bi bi-lightbulb-fill
+              {% if result.prediction == 'HOF' %}text-danger{% else %}text-success{% endif %}
+              fs-5 mt-1"></i>
+            <div class="small">
+              <strong>Insight: </strong>
+              {% if result.prediction == 'HOF' %}
+                Offensive or hate-related content patterns were detected in this text.
+                {% if result.normalized_text %}
+                  Transliteration normalization was applied, which may have helped surface
+                  Hinglish offensive tokens for detection.
+                {% else %}
+                  Consider enabling normalization if the text contains Hinglish tokens.
+                {% endif %}
+              {% else %}
+                No hate speech or offensive patterns were detected.
+                {% if result.normalized_text %}
+                  Normalization was applied and the text passed as safe after mapping.
+                {% else %}
+                  The text appears safe. Try normalization on Hinglish content for better coverage.
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 4. GENERATE REPORT BUTTON ─────────────────────────────────── -->
+      <div class="d-grid">
+        <a href="{{ url_for('report.single_report', pred_id=result.pred_id) }}"
+           class="btn btn-lg fw-semibold shadow-sm
+             {% if result.prediction == 'HOF' %}btn-danger{% else %}btn-success{% endif %}"
+           target="_blank">
+          <i class="bi bi-file-earmark-pdf me-2"></i>
+          Download Prediction Report (PDF)
+        </a>
+      </div>
+
+    {% else %}
+      <!-- ── PLACEHOLDER when no result ──────────────────────────────────── -->
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center py-5">
+          <i class="bi bi-chat-square-dots display-2 text-muted mb-3 opacity-50"></i>
+          <h6 class="text-muted fw-semibold mb-1">No analysis yet</h6>
+          <p class="text-muted small text-center mb-4">
+            Enter text on the left and click <strong>Analyse Now</strong><br/>
+            to see the prediction, confidence, and insights here.
+          </p>
+          <!-- Workflow steps strip -->
+          <div class="d-flex gap-3 flex-wrap justify-content-center">
+            {% for step, icon in [('Input','pencil'),('Preprocess','filter'),
+                                   ('Classify','robot'),('Report','file-pdf')] %}
+            <div class="text-center px-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center
+                           justify-content-center mb-1" style="width:40px;height:40px;">
+                <i class="bi bi-{{ icon }} text-primary"></i>
+              </div>
+              <div class="small text-muted">{{ step }}</div>
+            </div>
+            {% if not loop.last %}
+            <div class="d-flex align-items-center text-muted pb-4">
+              <i class="bi bi-arrow-right"></i>
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+  </div><!-- /right -->
+
+</div><!-- /row -->
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Character counter
+  const ta   = document.getElementById('input_text');
+  const cnt  = document.getElementById('charCount');
+  ta.addEventListener('input', () => cnt.textContent = ta.value.length);
+  cnt.textContent = ta.value.length;
+
+  // Normalization toggle hint
+  const toggle   = document.getElementById('use_normalization');
+  const normHint = document.getElementById('normHint');
+  if (toggle && normHint) {
+    const update = () => normHint.classList.toggle('d-none', !toggle.checked);
+    toggle.addEventListener('change', update);
+    update();
+  }
+
+  // Example buttons
+  document.querySelectorAll('.example-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ta.value = btn.dataset.text;
+      cnt.textContent = ta.value.length;
+      ta.focus();
+    });
+  });
+
+  // Submit spinner
+  document.getElementById('analyseForm').addEventListener('submit', () => {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing…';
+  });
+
+  // Highlight offensive keywords in preprocessed text
+  const OFFENSIVE = ['hate','kill','stupid','idiot','loser','dumb','ugly','trash',
+    'disgusting','pathetic','worthless','moron','freak','scum','horrible','awful',
+    'dirty','nonsense','fool','shameless','donkey','bastard','scoundrel','abuse',
+    'crazy','coward','thief'];
+
+  const el = document.getElementById('cleanedText');
+  if (el) {
+    let html = el.textContent;
+    OFFENSIVE.forEach(w => {
+      const re = new RegExp('\\b(' + w + ')\\b', 'gi');
+      html = html.replace(re,
+        '<mark class="bg-danger text-white px-1 rounded" title="offensive keyword">$1</mark>');
+    });
+    el.innerHTML = html;
+  }
+</script>
+{% endblock %}

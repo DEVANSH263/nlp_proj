@@ -1,0 +1,69 @@
+/* ── HateShield custom styles ─────────────────────────────────────── */
+
+:root {
+  --hs-hof: #dc3545;
+  --hs-not: #198754;
+}
+
+/* Full-height layout */
+html, body {
+  height: 100%;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  background-color: #f4f6f9;
+}
+main.container {
+  flex: 1;
+}
+
+/* Navbar brand */
+.navbar-brand {
+  font-size: 1.3rem;
+  letter-spacing: 0.5px;
+}
+
+/* Cards */
+.card {
+  border-radius: 0.75rem;
+  border: none;
+}
+.card-header {
+  border-radius: 0.75rem 0.75rem 0 0 !important;
+  font-weight: 600;
+}
+
+/* HOF / NOT colour helpers */
+.text-hof { color: var(--hs-hof); }
+.text-not { color: var(--hs-not); }
+.bg-hof   { background-color: var(--hs-hof); }
+.bg-not   { background-color: var(--hs-not); }
+
+/* Textarea */
+textarea.form-control {
+  resize: vertical;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 0.95rem;
+}
+
+/* Progress bar in history table */
+.table .progress {
+  border-radius: 4px;
+}
+
+/* Highlighted offensive word pill */
+mark.bg-danger {
+  font-size: 0.85em;
+  border-radius: 4px;
+}
+
+/* Sticky footer */
+footer {
+  font-size: 0.85rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .display-6 { font-size: 2rem; }
+}

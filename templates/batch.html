@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Batch Analysis – HateShield{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-0"><i class="bi bi-table me-2 text-primary"></i>Batch Analysis</h4>
+    <small class="text-muted">Analyse up to 200 texts at once — paste lines or upload a CSV</small>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- ══ LEFT: input ══════════════════════════════════════════════════════ -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-upload me-2"></i>Input
+      </div>
+      <div class="card-body">
+
+        <!-- Input method tabs -->
+        <ul class="nav nav-pills mb-3" id="inputTabs">
+          <li class="nav-item">
+            <button class="nav-link active btn-sm py-1 px-3" data-target="paste-panel">
+              <i class="bi bi-textarea me-1"></i>Paste
+            </button>
+          </li>
+          <li class="nav-item ms-1">
+            <button class="nav-link btn-sm py-1 px-3" data-target="csv-panel">
+              <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
+            </button>
+          </li>
+        </ul>
+
+        <form method="POST" enctype="multipart/form-data" id="batchForm">
+
+          <!-- Paste panel -->
+          <div id="paste-panel">
+            <label class="form-label small text-muted fw-semibold text-uppercase">
+              One text per line
+            </label>
+            <textarea class="form-control font-monospace small" name="paste_text" rows="10"
+              placeholder="yaar tu sach mein bohot achha hai&#10;tu bilkul pagal hai get lost&#10;...">{{ request.form.get('paste_text', '') }}</textarea>
+          </div>
+
+          <!-- CSV panel -->
+          <div id="csv-panel" class="d-none">
+            <label class="form-label small text-muted fw-semibold text-uppercase">
+              CSV file
+            </label>
+            <input type="file" class="form-control" name="csv_file" accept=".csv,.txt">
+            <div class="form-text small">
+              Column named <code>text</code>, <code>content</code>, or <code>message</code> is used.
+              If none match, the first column is used. First row is treated as header.
+            </div>
+          </div>
+
+          <!-- Model selector -->
+          <div class="p-3 bg-light rounded-3 mt-3 mb-4">
+            <div class="fw-semibold small mb-2"><i class="bi bi-cpu me-1"></i>Model</div>
+            <div class="d-flex gap-3 flex-wrap">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="model_type" id="b_lr" value="lr"
+                  {% if model_type == 'lr' or not model_type %}checked{% endif %}>
+                <label class="form-check-label small" for="b_lr">
+                  <span class="badge bg-primary me-1">LR</span>Logistic Regression
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="model_type" id="b_lstm" value="lstm"
+                  {% if model_type == 'lstm' %}checked{% endif %}>
+                <label class="form-check-label small" for="b_lstm">
+                  <span class="badge bg-warning text-dark me-1">DL</span>BiLSTM
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="model_type" id="b_muril" value="muril"
+                  {% if model_type == 'muril' %}checked{% endif %}>
+                <label class="form-check-label small" for="b_muril">
+                  <span class="badge bg-success me-1">🤗</span>MuRIL
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1 py-2" id="batchBtn">
+              <i class="bi bi-play-fill me-1"></i>Analyse All
+            </button>
+            {% if rows %}
+            <button type="button" class="btn btn-outline-success py-2"
+                    id="dlBtn" title="Download results as CSV"
+                    onclick="downloadCSV()">
+              <i class="bi bi-download me-1"></i>CSV
+            </button>
+            {% endif %}
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT: results ═══════════════════════════════════════════════════ -->
+  <div class="col-lg-8">
+    {% if rows %}
+
+    <!-- Stats strip -->
+    {% set hof_count = rows | selectattr('prediction', 'equalto', 'HOF') | list | length %}
+    {% set not_count = rows | length - hof_count %}
+    <div class="row g-3 mb-3">
+      <div class="col-4">
+        <div class="card border-0 shadow-sm text-center py-3">
+          <div class="fs-3 fw-bold text-primary">{{ rows | length }}</div>
+          <div class="small text-muted">Total</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="card border-0 shadow-sm text-center py-3">
+          <div class="fs-3 fw-bold text-danger">{{ hof_count }}</div>
+          <div class="small text-muted">Flagged (HOF)</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="card border-0 shadow-sm text-center py-3">
+          <div class="fs-3 fw-bold text-success">{{ not_count }}</div>
+          <div class="small text-muted">Safe (NOT)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOF % bar -->
+    {% if rows | length > 0 %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted fw-semibold">HOF rate</span>
+          <span class="fw-bold {% if hof_count > not_count %}text-danger{% else %}text-success{% endif %}">
+            {{ "%.0f"|format(hof_count / (rows | length) * 100) }}%
+          </span>
+        </div>
+        <div class="progress" style="height:10px; border-radius:6px;">
+          <div class="progress-bar bg-danger"
+               style="width:{{ "%.0f"|format(hof_count / (rows | length) * 100) }}%; border-radius:6px;">
+          </div>
+          <div class="progress-bar bg-success"
+               style="width:{{ "%.0f"|format(not_count / (rows | length) * 100) }}%; border-radius:0 6px 6px 0;">
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Results table -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-secondary text-white fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table me-2"></i>Results — <span id="modelUsed">{{ rows[0].model_used }}</span></span>
+        <span class="badge bg-light text-dark">{{ rows | length }} rows</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:480px; overflow-y:auto;">
+          <table class="table table-sm table-hover mb-0" id="resultsTable">
+            <thead class="table-dark" style="position:sticky; top:0; z-index:1;">
+              <tr>
+                <th style="width:36px">#</th>
+                <th>Text</th>
+                <th style="width:72px" class="text-center">Result</th>
+                <th style="width:90px" class="text-center">Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr class="{% if row.prediction == 'HOF' %}table-danger{% endif %}">
+                <td class="text-muted small">{{ loop.index }}</td>
+                <td class="small" data-full="{{ row.text }}" title="{{ row.text }}">
+                  {{ row.text[:100] }}{% if row.text | length > 100 %}…{% endif %}
+                </td>
+                <td class="text-center">
+                  {% if row.prediction == 'HOF' %}
+                    <span class="badge bg-danger">HOF</span>
+                  {% else %}
+                    <span class="badge bg-success">NOT</span>
+                  {% endif %}
+                </td>
+                <td class="text-center small fw-semibold
+                  {% if row.prediction == 'HOF' %}text-danger{% else %}text-success{% endif %}">
+                  {{ "%.1f"|format(row.confidence * 100) }}%
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+
+    <!-- Placeholder -->
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex flex-column align-items-center justify-content-center py-5">
+        <i class="bi bi-table display-2 text-muted mb-3 opacity-50"></i>
+        <h6 class="text-muted fw-semibold mb-1">No results yet</h6>
+        <p class="text-muted small text-center mb-0">
+          Paste one text per line or upload a CSV on the left,<br>
+          choose a model, then click <strong>Analyse All</strong>.
+        </p>
+        <div class="mt-4 text-muted small">
+          <strong>CSV format example:</strong><br>
+          <code>text<br>yaar tu bohot achha hai<br>tu pagal hai get lost</code>
+        </div>
+      </div>
+    </div>
+
+    {% endif %}
+  </div><!-- /right -->
+
+</div><!-- /row -->
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Tab switching
+  const tabs = document.querySelectorAll('#inputTabs .nav-link');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', function () {
+      tabs.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      document.getElementById('paste-panel').classList.add('d-none');
+      document.getElementById('csv-panel').classList.add('d-none');
+      document.getElementById(this.dataset.target).classList.remove('d-none');
+    });
+  });
+
+  // Spinner on analyse
+  document.getElementById('batchForm').addEventListener('submit', function () {
+    const btn = document.getElementById('batchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analysing…';
+  });
+
+  // Client-side CSV download from rendered table
+  function downloadCSV() {
+    const rows = [['Text', 'Prediction', 'Confidence (%)', 'Model']];
+    document.querySelectorAll('#resultsTable tbody tr').forEach(tr => {
+      const cells = tr.querySelectorAll('td');
+      const text  = cells[1] ? cells[1].getAttribute('data-full') || cells[1].textContent.trim() : '';
+      const pred  = cells[2] ? cells[2].textContent.trim() : '';
+      const conf  = cells[3] ? cells[3].textContent.trim() : '';
+      const model = document.getElementById('modelUsed') ? document.getElementById('modelUsed').textContent.trim() : '';
+      rows.push([text, pred, conf, model]);
+    });
+    const csv = rows.map(r => r.map(v => '"' + v.replace(/"/g, '""') + '"').join(',')).join('\n');
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'batch_results.csv';
+    a.click();
+  }
+</script>
+{% endblock %}

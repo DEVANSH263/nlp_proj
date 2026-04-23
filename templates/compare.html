@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Compare Models – HateShield{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-0"><i class="bi bi-bar-chart-steps me-2 text-primary"></i>Compare Models</h4>
+    <small class="text-muted">Run all 3 models on the same input and see results side-by-side</small>
+  </div>
+</div>
+
+<!-- Input card -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-primary text-white fw-semibold">
+    <i class="bi bi-pencil-square me-2"></i>Input
+  </div>
+  <div class="card-body">
+    <form method="POST" id="compareForm">
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-8">
+          <label for="input_text" class="form-label fw-semibold small text-muted text-uppercase">
+            Text to Analyse
+          </label>
+          <textarea class="form-control" id="input_text" name="input_text"
+                    rows="3" maxlength="2000"
+                    placeholder="e.g. yaar tu sach mein bohot achha hai, keep it up!"
+                    required>{{ input_text }}</textarea>
+        </div>
+        <div class="col-lg-2">
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   id="use_normalization" name="use_normalization"
+                   style="transform:scale(1.2);"
+                   {% if request.form.get('use_normalization') %}checked{% endif %}>
+            <label class="form-check-label small fw-semibold" for="use_normalization">
+              Normalize
+            </label>
+          </div>
+          <div class="text-muted" style="font-size:0.72rem;">Maps Hinglish → English</div>
+        </div>
+        <div class="col-lg-2 d-grid">
+          <button type="submit" class="btn btn-primary py-2" id="compareBtn">
+            <i class="bi bi-bar-chart me-1"></i>Compare
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if results %}
+
+<!-- 3-column model cards -->
+<div class="row g-3 mb-4">
+  {% for key, label, badge_cls, icon in [
+      ('lr',    'Logistic Regression', 'bg-primary',               'bi-diagram-3'),
+      ('lstm',  'BiLSTM',              'bg-warning text-dark',     'bi-layers'),
+      ('muril', 'MuRIL',               'bg-success',               'bi-translate')
+  ] %}
+  {% set r = results[key] %}
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100
+      {% if r.prediction == 'HOF' %}border-top border-danger border-4
+      {% else %}border-top border-success border-4{% endif %}">
+      <div class="card-header fw-semibold d-flex align-items-center justify-content-between">
+        <span><i class="bi {{ icon }} me-2"></i>{{ label }}</span>
+        <span class="badge {{ badge_cls }}">{{ key.upper() }}</span>
+      </div>
+      <div class="card-body text-center py-4">
+        <div class="display-5 fw-bold mb-1
+          {% if r.prediction == 'HOF' %}text-danger{% else %}text-success{% endif %}">
+          {{ r.prediction }}
+        </div>
+        <div class="small text-muted mb-4">
+          {% if r.prediction == 'HOF' %}Hate / Offensive{% else %}Safe Content{% endif %}
+        </div>
+        <div class="d-flex justify-content-between mb-1 small px-2">
+          <span class="text-muted">Confidence</span>
+          <span class="fw-bold
+            {% if r.prediction == 'HOF' %}text-danger{% else %}text-success{% endif %}">
+            {{ "%.1f"|format(r.confidence * 100) }}%
+          </span>
+        </div>
+        <div class="progress px-2" style="height:14px; border-radius:8px;">
+          <div class="progress-bar progress-bar-striped
+            {% if r.prediction == 'HOF' %}bg-danger{% else %}bg-success{% endif %}"
+            style="width:{{ (r.confidence * 100)|round|int }}%; border-radius:8px;">
+          </div>
+        </div>
+        <div class="mt-3 small text-muted">
+          {% set c = (r.confidence * 100)|round|int %}
+          {% if c >= 80 %}
+            <i class="bi bi-circle-fill text-success me-1" style="font-size:.5rem;"></i>High confidence
+          {% elif c >= 60 %}
+            <i class="bi bi-circle-fill text-warning me-1" style="font-size:.5rem;"></i>Moderate confidence
+          {% else %}
+            <i class="bi bi-circle-fill text-danger me-1" style="font-size:.5rem;"></i>Low confidence
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+
+<!-- Placeholder -->
+<div class="card border-0 shadow-sm">
+  <div class="card-body d-flex flex-column align-items-center justify-content-center py-5">
+    <i class="bi bi-bar-chart-steps display-2 text-muted mb-3 opacity-50"></i>
+    <h6 class="text-muted fw-semibold mb-1">No comparison yet</h6>
+    <p class="text-muted small text-center mb-0">
+      Enter text above and click <strong>Compare</strong> to see all three models side-by-side.
+    </p>
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById('compareForm').addEventListener('submit', function () {
+    const btn = document.getElementById('compareBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Running…';
+  });
+</script>
+{% endblock %}
