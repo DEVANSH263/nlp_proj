@@ -1,0 +1,141 @@
+{
+  "version": "lr_v2",
+  "changes_from_v1": [
+    "strip_accents removed (was destroying Devanagari)",
+    "word ngram_range (1,3) -> (1,2)",
+    "word max_features 60K -> 80K",
+    "char max_features 40K -> 60K",
+    "C grid extended to [0.1, 0.3, 1.0, 3.0, 10.0, 30.0]"
+  ],
+  "dataset": [
+    {
+      "file": "english_dataset.tsv",
+      "total": 5852,
+      "HOF": 2261,
+      "NOT": 3591,
+      "split": "train"
+    },
+    {
+      "file": "hindi_dataset.tsv",
+      "total": 4665,
+      "HOF": 2469,
+      "NOT": 2196,
+      "split": "train"
+    },
+    {
+      "file": "hasoc_2020_en_train.xlsx",
+      "total": 3708,
+      "HOF": 1856,
+      "NOT": 1852,
+      "split": "train"
+    },
+    {
+      "file": "hasoc_2020_hi_train.xlsx",
+      "total": 2963,
+      "HOF": 847,
+      "NOT": 2116,
+      "split": "train"
+    },
+    {
+      "file": "hasoc2019_en_test-2919.tsv",
+      "total": 1153,
+      "HOF": 288,
+      "NOT": 865,
+      "split": "test"
+    },
+    {
+      "file": "hasoc2019_hi_test_gold_2919.tsv",
+      "total": 1318,
+      "HOF": 605,
+      "NOT": 713,
+      "split": "test"
+    },
+    {
+      "file": "english_test_1509.csv",
+      "total": 814,
+      "HOF": 423,
+      "NOT": 391,
+      "split": "test"
+    },
+    {
+      "file": "hindi_test_1509.csv",
+      "total": 663,
+      "HOF": 197,
+      "NOT": 466,
+      "split": "test"
+    }
+  ],
+  "train_total": 17188,
+  "test_total": 3948,
+  "best_C": 1.0,
+  "cv_f1_macro": 0.758,
+  "test_accuracy": 0.8176,
+  "test_f1_macro": 0.8063,
+  "roc_auc_HOF": 0.8885,
+  "pr_auc_HOF": 0.8596,
+  "classification_report": {
+    "HOF": {
+      "precision": 0.7680865449628127,
+      "recall": 0.7508261731658956,
+      "f1-score": 0.7593582887700535,
+      "support": 1513.0
+    },
+    "NOT": {
+      "precision": 0.8473066018631025,
+      "recall": 0.8591375770020534,
+      "f1-score": 0.8531810766721044,
+      "support": 2435.0
+    },
+    "accuracy": 0.817629179331307,
+    "macro avg": {
+      "precision": 0.8076965734129575,
+      "recall": 0.8049818750839746,
+      "f1-score": 0.8062696827210789,
+      "support": 3948.0
+    },
+    "weighted avg": {
+      "precision": 0.8169469397328749,
+      "recall": 0.817629179331307,
+      "f1-score": 0.817225180497889,
+      "support": 3948.0
+    }
+  },
+  "confusion_matrix": {
+    "HOF_as_HOF": 1136,
+    "HOF_as_NOT": 377,
+    "NOT_as_HOF": 343,
+    "NOT_as_NOT": 2092
+  },
+  "cv_results": [
+    {
+      "C": 0.1,
+      "f1_macro_mean": 0.7503168672145047,
+      "f1_macro_std": 0.004703476143319825
+    },
+    {
+      "C": 0.3,
+      "f1_macro_mean": 0.757742440001013,
+      "f1_macro_std": 0.004994471303006617
+    },
+    {
+      "C": 1.0,
+      "f1_macro_mean": 0.7579776705272087,
+      "f1_macro_std": 0.006545774027775845
+    },
+    {
+      "C": 3.0,
+      "f1_macro_mean": 0.7529371436044174,
+      "f1_macro_std": 0.004859192017774667
+    },
+    {
+      "C": 10.0,
+      "f1_macro_mean": 0.7456031989316264,
+      "f1_macro_std": 0.004818653682376256
+    },
+    {
+      "C": 30.0,
+      "f1_macro_mean": 0.7410883091321606,
+      "f1_macro_std": 0.006470051992848525
+    }
+  ]
+}

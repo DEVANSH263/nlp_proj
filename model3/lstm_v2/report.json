@@ -1,0 +1,119 @@
+{
+  "model": "BiLSTM + Attention v2",
+  "dataset": "HASOC 2019 + 2020",
+  "device": "cuda",
+  "epochs_trained": 10,
+  "best_epoch": 5,
+  "hof_threshold": 0.5,
+  "pos_weight": 1.3124,
+  "test_accuracy": 0.805,
+  "test_f1_macro": 0.789,
+  "classification_report": {
+    "HOF": {
+      "precision": 0.7753891771682728,
+      "recall": 0.6913417052214144,
+      "f1-score": 0.7309573724668065,
+      "support": 1513.0
+    },
+    "NOT": {
+      "precision": 0.8203155059638323,
+      "recall": 0.875564681724846,
+      "f1-score": 0.8470401271354787,
+      "support": 2435.0
+    },
+    "accuracy": 0.8049645390070922,
+    "macro avg": {
+      "precision": 0.7978523415660526,
+      "recall": 0.7834531934731301,
+      "f1-score": 0.7889987498011426,
+      "support": 3948.0
+    },
+    "weighted avg": {
+      "precision": 0.8030982983985634,
+      "recall": 0.8049645390070922,
+      "f1-score": 0.8025534990165067,
+      "support": 3948.0
+    }
+  },
+  "history": {
+    "train_loss": [
+      0.7864,
+      0.7847,
+      0.7419,
+      0.6042,
+      0.5179,
+      0.4661,
+      0.4308,
+      0.4016,
+      0.3892,
+      0.376
+    ],
+    "train_acc": [
+      0.4325,
+      0.4326,
+      0.5662,
+      0.7372,
+      0.7944,
+      0.8246,
+      0.8427,
+      0.8567,
+      0.8635,
+      0.8709
+    ],
+    "val_loss": [
+      0.7745,
+      0.7696,
+      0.6168,
+      0.6513,
+      0.5151,
+      0.536,
+      0.5293,
+      0.5623,
+      0.5699,
+      0.5878
+    ],
+    "val_acc": [
+      0.3832,
+      0.3832,
+      0.7305,
+      0.7264,
+      0.7976,
+      0.7829,
+      0.7958,
+      0.7926,
+      0.792,
+      0.7832
+    ],
+    "val_f1": [
+      0.2771,
+      0.2771,
+      0.7209,
+      0.7249,
+      0.7838,
+      0.7749,
+      0.7836,
+      0.7797,
+      0.7791,
+      0.7738
+    ]
+  },
+  "fasttext_used": true,
+  "changes_from_v1": [
+    "FIXED pos_weight formula (always NOT/HOF * 1.3, correctly > 1)",
+    "LOWERED prediction threshold (0.5 \u2192 0.43, balanced with pos_weight change)",
+    "FIXED truncation (first 80 \u2192 first 50 + last 50 tokens)",
+    "ADDED Hinglish normalization in preprocess_lstm()",
+    "INCREASED dropout (0.2 \u2192 0.35) to fix overfitting",
+    "REDUCED hidden_dim (256 \u2192 200) for better generalization",
+    "IMPROVED attention (linear \u2192 Bahdanau tanh)",
+    "INCREASED scheduler patience (2 \u2192 4), track val_f1 not val_loss",
+    "ADDED early stopping (patience=8)",
+    "IMPROVED tokenizer (regex strip punctuation)",
+    "ADDED FastText pretrained embeddings (300-dim if files present)",
+    "REMOVED dropout before embedding (hurts representation learning)",
+    "ADDED attention dropout p=0.1 (prevents over-focus on single token)",
+    "INCREASED embed_dim (128 \u2192 150, or 300 with FastText)",
+    "INCREASED MAX_LEN (80 \u2192 100)",
+    "REMOVED dead unreachable code"
+  ]
+}
