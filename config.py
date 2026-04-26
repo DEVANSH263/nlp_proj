@@ -16,8 +16,8 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # All models stored locally
-    MODEL_PATH = os.path.join(BASE_DIR, 'model3', 'lr', 'model.pkl')
-    VECTORIZER_PATH = os.path.join(BASE_DIR, 'model3', 'lr', 'vectorizer.pkl')
-    LSTM_MODEL_PATH = os.path.join(BASE_DIR, 'model3', 'lstm', 'lstm_model.pt')
-    LSTM_VOCAB_PATH = os.path.join(BASE_DIR, 'model3', 'lstm', 'lstm_vocab.pkl')
+    MODEL_PATH = os.path.join(BASE_DIR, 'model3', 'lr_v2', 'model.pkl')
+    VECTORIZER_PATH = os.path.join(BASE_DIR, 'model3', 'lr_v2', 'vectorizer.pkl')
+    LSTM_MODEL_PATH = os.path.join(BASE_DIR, 'model3', 'lstm_v2', 'lstm_model.pt')
+    LSTM_VOCAB_PATH = os.path.join(BASE_DIR, 'model3', 'lstm_v2', 'lstm_vocab.pkl')
     MURIL_MODEL_PATH = os.path.join(BASE_DIR, 'model', 'muril')

@@ -58,15 +58,15 @@ def _load_artifacts():
     a full sklearn Pipeline that handles its own vectorisation.
     Returns (None, None) if model file is missing or corrupted.
     """
-    model_path      = current_app.config.get('MODEL_PATH', '')
-    vectorizer_path = current_app.config.get('VECTORIZER_PATH', '')
+    model_path      = current_app.config.get('MODEL_PATH', '')  # Path to saved trained LR model file
+    vectorizer_path = current_app.config.get('VECTORIZER_PATH', '')  # Path to saved TF-IDF vectorizer file
 
     if not os.path.exists(model_path):
         return None, None
 
     try:
         with open(model_path, 'rb') as f:
-            model = pickle.load(f)
+            model = pickle.load(f)  # Loaded trained model (sklearn classifier)
     except Exception as e:
         log.error('LR model load error: %s', e)
         return None, None
@@ -79,7 +79,7 @@ def _load_artifacts():
     if os.path.exists(vectorizer_path):
         try:
             with open(vectorizer_path, 'rb') as f:
-                vectorizer = pickle.load(f)
+                vectorizer = pickle.load(f)  # Loaded TF-IDF vectorizer (converts text to numbers)
             return model, vectorizer
         except Exception:
             pass
@@ -92,20 +92,20 @@ def _heuristic_predict(text: str):
     Simple keyword-presence heuristic with phrase boosting.
     Returns (label, confidence) where label is 'HOF' or 'NOT'.
     """
-    words = set(text.lower().split())
-    matches = words & OFFENSIVE_KEYWORDS
+    words = set(text.lower().split())  # All words in text (lowercase)
+    matches = words & OFFENSIVE_KEYWORDS  # Offensive words found in text (intersection)
     
     # Start with keyword match confidence
     if matches:
-        confidence = min(0.60 + 0.08 * len(matches), 0.98)
+        confidence = min(0.60 + 0.08 * len(matches), 0.98)  # Higher confidence if more offensive words found
     else:
-        confidence = 0.85
+        confidence = 0.85  # Default confidence if no offensive words
     
     # Apply phrase boost if matched
-    text_lower = text.lower()
-    for phrase, boost in OFFENSIVE_PHRASES.items():
+    text_lower = text.lower()  # Lowercase version of original text
+    for phrase, boost in OFFENSIVE_PHRASES.items():  # phrase=hateful phrase, boost=how much to increase confidence
         if phrase in text_lower:
-            confidence = min(confidence + boost, 1.0)
+            confidence = min(confidence + boost, 1.0)  # Add boost to confidence (capped at 1.0)
             break
     
     # Use optimized threshold
@@ -133,21 +133,21 @@ def predict(text: str, model_type: str = 'lr'):
     """
     # Step 1 – Apply model-specific preprocessing
     if model_type == 'lstm':
-        cleaned_text = preprocess_lstm(text)
+        cleaned_text = preprocess_lstm(text)  # Cleaned text for LSTM model
     elif model_type == 'muril':
-        cleaned_text = preprocess_muril(text)
+        cleaned_text = preprocess_muril(text)  # Cleaned text for MuRIL model
     else:  # default to 'lr'
-        cleaned_text = preprocess_lr(text)
+        cleaned_text = preprocess_lr(text)  # Cleaned text for Logistic Regression model
 
     # Step 2 – route to chosen backend
     if model_type == 'lstm':
-        label, confidence = _lstm_predict(cleaned_text)
+        label, confidence = _lstm_predict(cleaned_text)  # label='HOF' or 'NOT', confidence=0-1
     elif model_type == 'muril':
-        label, confidence = _muril_predict(cleaned_text)
+        label, confidence = _muril_predict(cleaned_text)  # label='HOF' or 'NOT', confidence=0-1
     else:
-        label, confidence = _lr_predict(cleaned_text)
+        label, confidence = _lr_predict(cleaned_text)  # label='HOF' or 'NOT', confidence=0-1
 
-    model_names = {'lr': 'Logistic Regression', 'lstm': 'BiLSTM', 'muril': 'MuRIL'}
+    model_names = {'lr': 'Logistic Regression', 'lstm': 'BiLSTM', 'muril': 'MuRIL'}  # Display names for models
     return {
         'cleaned_text'   : cleaned_text,
         'prediction'     : str(label).upper(),
@@ -158,27 +158,27 @@ def predict(text: str, model_type: str = 'lr'):
 
 # ── LR backend ────────────────────────────────────────────────────────────────
 def _lr_predict(text: str):
-    model, vectorizer = _load_artifacts()
+    model, vectorizer = _load_artifacts()  # model=trained classifier, vectorizer=TF-IDF converter
     if model is not None:
         try:
             if vectorizer is None:
-                label_raw = model.predict([text])[0]
-                proba = model.predict_proba([text])[0]
+                label_raw = model.predict([text])[0]  # Predicted label (0 or 1)
+                proba = model.predict_proba([text])[0]  # Probability for each class [P(NOT), P(HOF)]
             else:
-                vec   = vectorizer.transform([text])
-                label_raw = model.predict(vec)[0]
-                proba = model.predict_proba(vec)[0]
+                vec   = vectorizer.transform([text])  # vec=text converted to TF-IDF numbers
+                label_raw = model.predict(vec)[0]  # Predicted label (0 or 1)
+                proba = model.predict_proba(vec)[0]  # Probability for each class [P(NOT), P(HOF)]
             
             # proba[0] = HOF confidence, proba[1] = NOT confidence
-            hof_prob = proba[0]
+            hof_prob = proba[0]  # Probability that text is hateful (HOF)
             
             # Apply optimized threshold instead of default 0.5
-            if hof_prob >= CONFIDENCE_THRESHOLD:
-                label = 'HOF'
-                confidence = hof_prob
+            if hof_prob >= CONFIDENCE_THRESHOLD:  # CONFIDENCE_THRESHOLD = 0.42
+                label = 'HOF'  # Final prediction: hateful
+                confidence = hof_prob  # Use HOF probability as confidence score
             else:
-                label = 'NOT'
-                confidence = proba[1]  # NOT confidence
+                label = 'NOT'  # Final prediction: not hateful
+                confidence = proba[1]  # NOT confidence = probability it's not hateful
             
             return label, float(confidence)
         except Exception as e:
@@ -194,6 +194,8 @@ def _lstm_predict(text: str):
     print('[LSTM] _lstm_predict called', flush=True)
     try:
         import torch
+        import torch.nn as nn
+        from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
         if 'model' not in _lstm_cache:
             model_path = current_app.config.get('LSTM_MODEL_PATH', '')
@@ -201,40 +203,41 @@ def _lstm_predict(text: str):
             if not (os.path.exists(model_path) and os.path.exists(vocab_path)):
                 return _heuristic_predict(text)
 
-            # load vocab
             with open(vocab_path, 'rb') as f:
                 word2idx = pickle.load(f)
 
-            # load checkpoint
             ckpt = torch.load(model_path, map_location='cpu')
             cfg  = ckpt['config']
 
-            # rebuild model architecture (mirrors train_lstm.py)
-            import torch.nn as nn
-            from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-
+            # ── v2 architecture: Bahdanau attention + Identity embedding dropout ──
+            # Must exactly mirror train_lstm_v2.py or load_state_dict will fail with
+            # key mismatches (attn_hidden / attn_context / emb_drop keys).
             class _Attention(nn.Module):
                 def __init__(self, h):
                     super().__init__()
-                    self.attn = nn.Linear(h, 1)
+                    self.attn_hidden  = nn.Linear(h, h)        # projects hidden states
+                    self.attn_context = nn.Linear(h, 1, bias=False)  # scalar score per state
+                    self.attn_drop    = nn.Dropout(0.1)
                 def forward(self, hs, lengths):
-                    scores = self.attn(hs).squeeze(-1)
-                    mask = torch.arange(hs.size(1)).unsqueeze(0) >= lengths.unsqueeze(1)
+                    energy = torch.tanh(self.attn_hidden(hs))      # (B, T, H)
+                    scores = self.attn_context(energy).squeeze(-1)  # (B, T)
+                    mask   = torch.arange(hs.size(1)).unsqueeze(0) >= lengths.unsqueeze(1)
                     scores = scores.masked_fill(mask, -1e9)
-                    w = torch.softmax(scores, dim=1).unsqueeze(2)
+                    w      = self.attn_drop(torch.softmax(scores, dim=1)).unsqueeze(2)
                     return (hs * w).sum(1)
 
             class _BiLSTM(nn.Module):
                 def __init__(self, vs, ed, hd, nl, dp):
                     super().__init__()
                     self.embedding = nn.Embedding(vs, ed, padding_idx=0)
-                    self.lstm = nn.LSTM(ed, hd, num_layers=nl, batch_first=True,
-                                        bidirectional=True, dropout=dp if nl > 1 else 0)
+                    self.lstm      = nn.LSTM(ed, hd, num_layers=nl, batch_first=True,
+                                            bidirectional=True, dropout=dp if nl > 1 else 0)
                     self.attention = _Attention(hd * 2)
                     self.dropout   = nn.Dropout(dp)
+                    self.emb_drop  = nn.Identity()   # v2: no embedding dropout
                     self.fc        = nn.Linear(hd * 2, 1)
                 def forward(self, x, lengths):
-                    emb    = self.dropout(self.embedding(x))
+                    emb    = self.emb_drop(self.embedding(x))
                     packed = pack_padded_sequence(emb, lengths.cpu(), batch_first=True, enforce_sorted=True)
                     out, _ = self.lstm(packed)
                     out, _ = pad_packed_sequence(out, batch_first=True)
@@ -246,28 +249,46 @@ def _lstm_predict(text: str):
             net.load_state_dict(ckpt['state_dict'])
             net.eval()
 
-            _lstm_cache['model']    = net
-            _lstm_cache['word2idx'] = word2idx
+            _lstm_cache['model']     = net
+            _lstm_cache['word2idx']  = word2idx
             _lstm_cache['label2idx'] = ckpt.get('label2idx', {'HOF': 1, 'NOT': 0})
+            # Use the threshold selected during training (threshold sweep picks best value)
+            _lstm_cache['threshold'] = cfg.get('hof_threshold', 0.45)
 
-        net      = _lstm_cache['model']
-        word2idx = _lstm_cache['word2idx']
+        net       = _lstm_cache['model']
+        word2idx  = _lstm_cache['word2idx']
         label2idx = _lstm_cache['label2idx']
         idx2label = {v: k for k, v in label2idx.items()}
-        MAX_LEN  = 80
+        threshold = _lstm_cache['threshold']
+        MAX_LEN   = 120   # must match train_lstm_v2.py MAX_LEN
 
-        tokens = text.split()[:MAX_LEN]
+        # ── v2 tokenizer: regex extraction + nukta normalization + prefix/suffix anchors ──
+        _TOK_RE  = re.compile(r'[\u0900-\u097F]+|[a-zA-Z]+')
+        _NUKTA   = '\u093c'
+        _SW      = {"the","is","in","it","of","and","a","an","are","was","be"}
+        word_toks = [t.replace(_NUKTA, '') for t in _TOK_RE.findall(text.lower())]
+        word_toks = [t for t in word_toks if t and t not in _SW]
+        result    = list(word_toks)
+        for w in word_toks:
+            if len(w) >= 5:
+                result.append(w[:3])
+                result.append(w[-3:])
+        tokens = result
+
+        # first half + last half truncation (same as train_lstm_v2.py encode())
+        if len(tokens) > MAX_LEN:
+            half   = MAX_LEN // 2
+            tokens = tokens[:half] + tokens[-half:]
         ids    = [word2idx.get(t, word2idx.get('<UNK>', 1)) for t in tokens]
         length = max(len(ids), 1)
         ids   += [0] * (MAX_LEN - len(ids))
 
         with torch.no_grad():
-            x   = torch.tensor([ids], dtype=torch.long)
-            l   = torch.tensor([length], dtype=torch.long)
-            logit = net(x, l)
-            prob  = torch.sigmoid(logit).item()
+            x     = torch.tensor([ids],    dtype=torch.long)
+            l     = torch.tensor([length], dtype=torch.long)
+            prob  = torch.sigmoid(net(x, l)).item()
 
-        label = idx2label[1] if prob >= 0.5 else idx2label[0]
+        label      = idx2label[1] if prob >= threshold else idx2label[0]
         confidence = prob if prob >= 0.5 else 1 - prob
         return label, round(confidence, 4)
 
@@ -289,33 +310,33 @@ def _muril_predict(text: str):
         import torch
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-        if 'model' not in _muril_cache:
-            model_path = current_app.config.get('MURIL_MODEL_PATH', '')
+        if 'model' not in _muril_cache:  # Check if model is already loaded in cache
+            model_path = current_app.config.get('MURIL_MODEL_PATH', '')  # Path to MuRIL model directory
             
             if not model_path or not os.path.isdir(model_path):
                 print(f'[MuRIL] Model path invalid: {model_path}', flush=True)
-                return _heuristic_predict(text)
+                return _heuristic_predict(text)  # Fall back if path invalid
             
             print(f'[MuRIL] Loading from local: {model_path}', flush=True)
-            tokenizer = AutoTokenizer.from_pretrained(model_path)
-            model     = AutoModelForSequenceClassification.from_pretrained(model_path)
-            model.eval()
-            _muril_cache['model']     = model
-            _muril_cache['tokenizer'] = tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(model_path)  # tokenizer = converts text to token IDs
+            model     = AutoModelForSequenceClassification.from_pretrained(model_path)  # model = fine-tuned transformer
+            model.eval()  # Switch to evaluation mode
+            _muril_cache['model']     = model  # Store model in cache
+            _muril_cache['tokenizer'] = tokenizer  # Store tokenizer in cache
             print('[MuRIL] Model loaded successfully', flush=True)
 
-        model     = _muril_cache['model']
-        tokenizer = _muril_cache['tokenizer']
+        model     = _muril_cache['model']  # Retrieved cached model
+        tokenizer = _muril_cache['tokenizer']  # Retrieved cached tokenizer
         # run on CPU in Flask (GPU not available in venv)
         enc = tokenizer(text, max_length=128, padding='max_length',
-                        truncation=True, return_tensors='pt')
-        with torch.no_grad():
-            logits = model(**enc).logits
-            proba  = torch.softmax(logits, dim=1)[0]  # [NOT, HOF]
+                        truncation=True, return_tensors='pt')  # enc = encoded text as tokens (tensor)
+        with torch.no_grad():  # Disable gradient calculation
+            logits = model(**enc).logits  # logits = raw prediction scores from model
+            proba  = torch.softmax(logits, dim=1)[0]  # proba = probabilities [P(NOT), P(HOF)]
 
-        hof_prob = proba[1].item()
-        label      = 'HOF' if hof_prob >= 0.5 else 'NOT'
-        confidence = hof_prob if hof_prob >= 0.5 else 1 - hof_prob
+        hof_prob = proba[1].item()  # hof_prob = probability that text is hateful (0-1)
+        label      = 'HOF' if hof_prob >= 0.5 else 'NOT'  # label = final prediction
+        confidence = hof_prob if hof_prob >= 0.5 else 1 - hof_prob  # confidence = how sure we are
         print(f'[MuRIL] Prediction: {label} ({confidence})', flush=True)
         return label, round(confidence, 4)
 

@@ -8,7 +8,9 @@ If thefuzz is not installed the module falls back gracefully
 (normalization returns the original text unchanged).
 """
 
-FUZZY_THRESHOLD = 85  # minimum similarity score (0-100)
+FUZZY_THRESHOLD = 80  # minimum similarity score (0-100)
+# Lowered from 85: catches common spelling variants (randii, haraami, etc.)
+# without meaningfully increasing false positives on English text
 
 # Strong Hinglish → English / offensive mappings (100+ words)
 # Optimized for LR: Using stronger semantic equivalents for better weight
@@ -32,7 +34,10 @@ HINGLISH_DICT = {
     "jhatu": "asshole",
     "chodu": "idiot",
     "bhondu": "stupid",
-    "randi": "derogatory",
+    "randi": "whore",           # FIXED: was "derogatory" — zero weight in embeddings
+    "randii": "whore",          # spelling variant
+    "raandi": "whore",          # spelling variant
+    "raand": "whore",
     "bhikari": "beggar trash",
     "budha": "old fool",
     "darpok": "coward",
@@ -50,80 +55,13 @@ HINGLISH_DICT = {
     "bhaad": "hell",
     "nalayak": "incompetent",
     "ganwar": "uncivilized",
-    "masoom": "innocent",
-    "sasta": "cheap",
     "jhooth": "liar",
     "dhokha": "betrayal",
     "chamcha": "ass kisser",
-    "thullu": "idiot",
-    "gandoo": "dirty bastard",
-    "pant": "coward",
-    "hilaa": "shake off",
-    "susti": "lazy",
-    "dhongi": "fraud",
-    "chalak": "cunning",
-    "chichu": "sissy",
-    "budhapa": "old age shame",
-    "beksufi": "shameless",
-    "beshwami": "shameless",
-    "chamkila": "slut",
-    "randa": "whore",
-    "thand": "cold shoulder",
-    "thandia": "betrayer",
-    "khichdi": "mixture mess",
-    "mungeya": "poor trash",
-    "chikna": "slick fraud",
-    "chipku": "sticky leech",
-    "khechar": "vagrant",
-    "naukar": "servant trash",
-    
-    # ===== MILD ABUSIVE / NEGATIVE =====
-    "maro": "hit",
-    "maar": "hit",
-    "maar pakad": "arrest",
-    "jhappad": "slap",
-    "chakka": "faggot",
-    "gali": "abuse",
-    "chup": "shut up",
-    "shup": "shut up",
-    "choop": "shut",
-    "band karo": "stop it",
-    "niklo": "get out",
-    "ja": "go away",
-    "jao": "go away",
-    "bhag": "run away",
-    "bhaag": "flee",
-    "hato": "move aside",
-    "shor": "noise",
-    "chilla": "yell",
-    "chillao": "yell loud",
-    "seena": "chest beat",
-    "dhokha": "betrayal",
-    "bewahaal": "ruined",
-    "barbaadi": "destruction",
-    "tabahi": "disaster",
-    
-    # ===== POSITIVE / NEUTRAL (for context) =====
-    "badhiya": "good",
-    "mast": "excellent",
-    "jhakaas": "awesome",
-    "shabash": "well done",
-    "acha": "okay",
-    "accha": "okay",
-    "theek": "fine",
-    "shukriya": "thanks",
-    "acha": "good",
-    "pyaar": "love",
-    "dost": "friend",
-    "bhai": "brother",
-    "behan": "sister",
-    "mummy": "mom",
-    "papa": "dad",
-    "nana": "grandpa",
-    "nani": "grandma",
-    "shaadi": "wedding",
-    "khushi": "happiness",
-    "sukh": "peace",
+    # Neutral→neutral replacements (dost→friend, bhai→brother, acha→okay) add noise:
+    #   - short tokens ("ja", "na") false-positive fuzzy-match English words
+    #   - neutral replacements don't help HOF detection, dilute signal
+    #   - duplicate "acha" key (was "okay" then "good") silently overwrote itself
 }
 
 try:
@@ -151,6 +89,13 @@ def normalize_text(text: str) -> str:
     for token in tokens:
         best_match = None
         best_score = 0
+
+        # Skip short tokens (≤ 4 chars): fuzzy matching on short strings produces
+        # too many false positives. E.g. "gal" → "gali" (86%), "hat" → "hato" (86%),
+        # "mar" → "maar" (86%) — all legitimate English words corrupted.
+        if len(token) <= 4:
+            normalised.append(token)
+            continue
 
         for hin_word in HINGLISH_DICT:
             score = fuzz.ratio(token.lower(), hin_word)

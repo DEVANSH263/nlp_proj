@@ -266,8 +266,15 @@ def preprocess_lstm(text: str) -> str:
     
     # 7. Remove punctuation
     text = remove_punctuation_safe(text, keep_chars=' ')
-    
-    # 8. Collapse whitespace
+
+    # 8. Hinglish → English normalization (same as LR)
+    # Added to align LSTM input signal with LR: "randi"→"whore", "chutiya"→"asshole" etc.
+    # Without this, LSTM sees raw Hinglish tokens with weak/scattered embeddings while
+    # LR sees strong English equivalents. normalize_text() uses fuzzy matching (threshold=80).
+    if NORMALIZE_AVAILABLE:
+        text = normalize_text(text)
+
+    # 9. Collapse whitespace
     text = collapse_whitespace(text)
     
     return text
