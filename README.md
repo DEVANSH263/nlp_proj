@@ -1,4 +1,4 @@
-# 🛡️ HateShield - Hate Speech Detection System
+#  HateShield - Hate Speech Detection System
 
 **Multi-Model Hate Speech Detection for English & Hindi Content**
 
