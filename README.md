@@ -342,15 +342,10 @@ Accuracy: 83.46%
 
 ---
 
-## License
-
-MIT License - See LICENSE file for details
-
----
 
 ## Author
 
-Created by: [Your Name]
+Created by: Devansh
 Date: April 2026
 Version: 1.0.0
 
@@ -365,21 +360,5 @@ Version: 1.0.0
 
 ---
 
-## Support
-
-**Issues:** Create GitHub issue
-**Discussions:** GitHub Discussions
-**Contact:** email@example.com
-
----
-
-## Deployment Status
-
-- ✅ Local: `http://127.0.0.1:5000`
-- 🚀 Production: `https://xxx.railway.app`
-
-**Live Demo:** (Add link after deployment)
-
----
 
 **Built with ❤️ for hate speech detection**
